@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aya Crypto Agent</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * { box-sizing: border-box; font-family: "Poppins", sans-serif; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #0f172a, #1e293b, #0f172a);
+      color: #f8fafc;
+    }
+
+    .card {
+      width: 95%;
+      max-width: 800px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(12px);
+      border-radius: 16px;
+      padding: 2rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+      text-align: center;
+    }
+
+    h1 {
+      color: #38bdf8;
+      margin-bottom: 1rem;
+    }
+
+    input {
+      padding: 10px;
+      margin: 5px;
+      border: none;
+      border-radius: 8px;
+      outline: none;
+    }
+
+    .coin-row {
+      margin: 8px 0;
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .removeCoin {
+      background: #ef4444;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .removeCoin:hover {
+      background: #f87171;
+      transform: scale(1.1);
+    }
+
+    /* === Unified button styles with clean spacing === */
+    #addCoin {
+      background: linear-gradient(90deg, #22c55e, #16a34a);
+      color: white;
+      margin-top: 10px;
+      margin-bottom: 10px;
+      box-shadow: 0 0 10px rgba(34, 197, 94, 0.4);
+    }
+
+    #addCoin:hover {
+      background: linear-gradient(90deg, #4ade80, #22c55e);
+      box-shadow: 0 0 16px rgba(34, 197, 94, 0.6);
+      transform: scale(1.03);
+    }
+
+    button {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    button:not(#addCoin) {
+      background: linear-gradient(90deg, #38bdf8, #2563eb);
+      color: #0f172a;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+      margin-top: 10px;
+    }
+
+    button:not(#addCoin):hover {
+      background: linear-gradient(90deg, #7dd3fc, #3b82f6);
+      box-shadow: 0 0 18px rgba(56, 189, 248, 0.8);
+      transform: scale(1.03);
+    }
+
+    .output {
+      margin-top: 15px;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 10px;
+      border-radius: 8px;
+      min-height: 70px;
+      text-align: left;
+      font-size: 0.9rem;
+    }
+
+    canvas {
+      margin-top: 20px;
+    }
+
+    h3 {
+      margin-top: 30px;
+      color: #7dd3fc;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Aya Crypto Agent</h1>
+    <p style="font-size:0.9rem;opacity:0.8;">AI-powered portfolio insights</p>
+
+    <div id="coins">
+      <div class="coin-row">
+        <input type="text" placeholder="Coin Symbol (e.g., BTC)" class="coin" />
+        <input type="number" placeholder="Value" class="value" />
+        <button class="removeCoin">✕</button>
+      </div>
+    </div>
+
+    <button id="addCoin">+ Add Coin</button>
+    <button onclick="summarize()">Generate Summary</button>
+
+    <div id="loading" style="display:none;margin-top:10px;color:#7dd3fc;">Analyzing portfolio…</div>
+    <div class="output" id="output">Your summary will appear here...</div>
+
+    <h3>Portfolio Distribution</h3>
+    <canvas id="pieChart" width="300" height="300"></canvas>
+
+    <h3>Value Comparison</h3>
+    <canvas id="barChart" width="300" height="300"></canvas>
+  </div>
+
+  <script>
+    let pieChart, barChart;
+
+    // Add / Remove Coins
+    document.getElementById("addCoin").addEventListener("click", () => {
+      const coinsDiv = document.getElementById("coins");
+      const row = document.createElement("div");
+      row.classList.add("coin-row");
+      row.innerHTML = `
+        <input type="text" placeholder="Coin Symbol (e.g., SOL)" class="coin" />
+        <input type="number" placeholder="Value" class="value" />
+        <button class="removeCoin">✕</button>
+      `;
+      coinsDiv.appendChild(row);
+      row.querySelector(".removeCoin").addEventListener("click", () => row.remove());
+    });
+    document.querySelector(".removeCoin").addEventListener("click", e => e.target.parentElement.remove());
+
+    async function summarize() {
+      const output = document.getElementById("output");
+      const loading = document.getElementById("loading");
+      output.textContent = "";
+      loading.style.display = "block";
+
+      const coinInputs = document.querySelectorAll(".coin");
+      const valueInputs = document.querySelectorAll(".value");
+      const portfolio = {};
+      coinInputs.forEach((coinInput, i) => {
+        const coin = coinInput.value.trim().toUpperCase();
+        const value = parseFloat(valueInputs[i].value);
+        if (coin && !isNaN(value)) portfolio[coin] = value;
+      });
+
+      try {
+        const res = await fetch("http://localhost:3000/summarize", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ portfolio })
+        });
+        const data = await res.json();
+        loading.style.display = "none";
+        output.textContent = data.summary || "Error: " + (data.error || "Unknown error");
+        const labels = Object.keys(portfolio);
+        const values = Object.values(portfolio);
+        drawPieChart(labels, values);
+        drawBarChart(labels, values);
+      } catch (err) {
+        loading.style.display = "none";
+        output.textContent = "Connection error. Please ensure the server is running.";
+      }
+    }
+
+    function drawPieChart(labels, values) {
+      const ctx = document.getElementById("pieChart").getContext("2d");
+      if (pieChart) pieChart.destroy();
+      pieChart = new Chart(ctx, {
+        type: "pie",
+        data: {
+          labels,
+          datasets: [{ data: values, backgroundColor: generateColors(labels.length) }]
+        },
+        options: { plugins: { legend: { labels: { color: "#f8fafc" } } } }
+      });
+    }
+
+    function drawBarChart(labels, values) {
+      const ctx = document.getElementById("barChart").getContext("2d");
+      if (barChart) barChart.destroy();
+      barChart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [{
+            label: "Portfolio Value",
+            data: values,
+            backgroundColor: generateColors(labels.length)
+          }]
+        },
+        options: {
+          scales: { x: { ticks: { color: "#f8fafc" } }, y: { ticks: { color: "#f8fafc" } } },
+          plugins: { legend: { labels: { color: "#f8fafc" } } }
+        }
+      });
+    }
+
+    function generateColors(n) {
+      const colors = [];
+      for (let i = 0; i < n; i++) {
+        const hue = Math.floor((360 / n) * i);
+        colors.push(`hsl(${hue}, 70%, 55%)`);
+      }
+      return colors;
+    }
+  </script>
+</body>
+</html>

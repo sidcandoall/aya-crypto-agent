@@ -1,0 +1,16 @@
+{
+    "name": "Aya Crypto Portfolio Tracker",
+    "version": "1.0.0",
+    "description": "MCP tool that lets Aya fetch and summarize user crypto wallet portfolios",
+    "endpoints": {
+      "wallet_balance": {
+        "method": "POST",
+        "description": "Fetch token balances and USD value for given wallet address"
+      },
+      "summarize": {
+        "method": "POST",
+        "description": "Summarize portfolio into natural language using AI"
+      }
+    }
+  }
+  
